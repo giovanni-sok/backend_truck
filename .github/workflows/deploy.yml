@@ -90,20 +90,22 @@ jobs:
 
       - name: Écrire le .env sur le serveur
         run: |
-          ssh -i ~/.ssh/id_ed25519 \
-            -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "cat > /opt/backend-gettruck/.env" << EOF
-          DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-          IMAGE_TAG=${{ env.IMAGE_TAG }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          EMAIL_USER=${{ secrets.EMAIL_USER }}
-          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
-          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-          EOF
+              cat > /tmp/.env << EOF
+              DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+              IMAGE_TAG=${{ env.IMAGE_TAG }}
+              POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+              POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+              POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+              JWT_SECRET=${{ secrets.JWT_SECRET }}
+              EMAIL_USER=${{ secrets.EMAIL_USER }}
+              EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+              FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+              EOF
+
+              scp -i ~/.ssh/id_ed25519 \
+                -P ${{ secrets.SERVER_PORT || 22 }} \
+                /tmp/.env \
+                ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/backend-gettruck/.env
 
       - name: Lancer le déploiement
         run: |
