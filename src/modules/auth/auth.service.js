@@ -20,7 +20,7 @@ const otp = generateOTP();
 const expires = new Date(Date.now() + 1000 * 60 * 10); // 10 min
 const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user= prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       nom,
       prenom,
