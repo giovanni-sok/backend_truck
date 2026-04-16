@@ -46,6 +46,14 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
+      - name: Vérifier la connectivité
+        run: |
+          echo "Host: ${{ secrets.SERVER_HOST }}"
+          echo "Port: ${{ secrets.SERVER_PORT }}"
+          nc -zv -w 10 ${{ secrets.SERVER_HOST }} ${{ secrets.SERVER_PORT || 22 }} \
+          && echo "✅ Port accessible" \
+          || echo "❌ Port inaccessible"
+
       - name: Configurer la clé SSH
         run: |
           mkdir -p ~/.ssh
