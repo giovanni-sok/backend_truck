@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("./user.controller");
+const authenticate = require("../../middlewares/authenticate");
+const authorize = require("../../middlewares/authorize");
 /**
  * @swagger
  * tags:
@@ -13,6 +15,8 @@ const controller = require("./user.controller");
  *   put:
  *     summary: Approuver un chauffeur
  *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -25,7 +29,11 @@ const controller = require("./user.controller");
  *         description: Chauffeur approuvé avec succès
  *       400:
  *         description: Erreur lors de l'approbation du chauffeur
+ *       401:
+ *         description: Token non fourni ou invalide
+ *       403:
+ *         description: Accès interdit - Rôle admin requis
  */
 
-router.put("/approve/:id", controller.approveDriver);
+router.put("/approve/:id", authenticate, authorize("ADMIN"), controller.approveDriver);
 module.exports = router;

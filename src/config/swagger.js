@@ -21,6 +21,21 @@ function generateSwaggerSpec(req) {
           description: "Current server",
         },
       ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+            description: "Entrez votre token JWT",
+          },
+        },
+      },
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
     },
     apis: ["./src/modules/**/*.js"],
   };
