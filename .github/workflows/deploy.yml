@@ -69,9 +69,8 @@ jobs:
       - name: Créer le dossier sur le serveur
         run: |
           ssh -i ~/.ssh/id_ed25519 \
-            -p ${{ secrets.SERVER_PORT || 22 }} \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "sudo mkdir -p /opt/backend-gettruck/docker/scripts && sudo chown -R $USER:$USER /opt/backend-gettruck"
+            "sudo mkdir -p /opt/backend-gettruck/docker/scripts && sudo chown -R ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /opt/backend-gettruck"
 
       - name: Copier docker-compose.yml
         run: |
