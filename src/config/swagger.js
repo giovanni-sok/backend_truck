@@ -1,24 +1,31 @@
 const swaggerJsdoc = require("swagger-jsdoc");
 
-const API_URL = process.env.API_URL || "http://localhost:5001";
+// Créer un middleware qui génère les specs dynamiquement avec l'URL correcte
+function generateSwaggerSpec(req) {
+  // Déterminer l'URL de base depuis la requête
+  const protocol = req.get('X-Forwarded-Proto') || req.protocol || 'http';
+  const host = req.get('X-Forwarded-Host') || req.get('host') || 'localhost:5001';
+  const baseUrl = `${protocol}://${host}`;
 
-const options = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "API truck Backend",
-      version: "1.0.0",
-      description: "Documentation de ton backend",
-    },
-    servers: [
-      {
-        url: API_URL,
+  const options = {
+    definition: {
+      openapi: "3.0.0",
+      info: {
+        title: "API truck Backend",
+        version: "1.0.0",
+        description: "Documentation de ton backend",
       },
-    ],
-  },
-  apis: ["./src/modules/**/*.js"],
-};
+      servers: [
+        {
+          url: baseUrl,
+          description: "Current server",
+        },
+      ],
+    },
+    apis: ["./src/modules/**/*.js"],
+  };
 
-const specs = swaggerJsdoc(options);
+  return swaggerJsdoc(options);
+}
 
-module.exports = specs;
+module.exports = generateSwaggerSpec;

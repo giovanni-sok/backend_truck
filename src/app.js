@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swagger");
+const generateSwaggerSpec = require("./config/swagger");
 
 const authRoutes = require("./modules/auth/auth.routes");
 const userRoutes = require("./modules/user/user.routes");
@@ -42,6 +42,10 @@ app.use(express.json());
 // Routes API pour authentification et gestion des utilisateurs
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Swagger avec URL dynamique
+app.use("/api-docs", swaggerUi.serve, (req, res, next) => {
+  const swaggerSpec = generateSwaggerSpec(req);
+  swaggerUi.setup(swaggerSpec)(req, res, next);
+});
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 module.exports = app;
