@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_URL="http://localhost:3000"
+APP_URL="http://localhost:5001"
 MAX_RETRIES=10
 WAIT_SECONDS=5
 

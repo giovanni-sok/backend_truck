@@ -6,7 +6,7 @@ services:
     container_name: backend-gettruck-app
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       APP_ENV: production
       APP_NAME: GetTruck
