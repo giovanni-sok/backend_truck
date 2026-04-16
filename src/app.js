@@ -9,7 +9,29 @@ const userRoutes = require("./modules/user/user.routes");
 const app = express();
 
 const corsOptions = {
-  origin: '*',
+  origin: (origin, callback) => {
+    // Origins autorisées
+    const allowedOrigins = [
+      'http://localhost:3000',        // Frontend dev local
+      'http://localhost:5000',        // Swagger local
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5000',
+      process.env.FRONTEND_URL,       // Frontend en production (ex: https://gettruck.com)
+      process.env.API_URL,            // API URL
+    ].filter(Boolean);
+
+    // En développement, autoriser tous les origins
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      // En production, vérifier la liste blanche
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
