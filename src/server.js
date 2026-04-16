@@ -34,8 +34,10 @@ async function initializeAdmin() {
 
 // Initialiser l'admin et démarrer le serveur
 initializeAdmin().then(() => {
-  app.listen(PORT, () => {
+  const HOST = process.env.HOST || "0.0.0.0";
+  app.listen(PORT, HOST, () => {
     const API_URL = process.env.API_URL || `http://localhost:${PORT}`;
-    console.log(`🚀 Server lancé sur ${API_URL}`);
+    console.log(`🚀 Server lancé sur ${HOST}:${PORT}`);
+    console.log(`📡 Accessible via ${API_URL}`);
   });
 });
