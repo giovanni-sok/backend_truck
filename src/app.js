@@ -12,24 +12,45 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Origins autorisées
     const allowedOrigins = [
-      'http://localhost:3000',        // Frontend dev local
-      'http://localhost:5000',        // Swagger local
+      // Localhost
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5000',
+      'http://localhost:5001',
       'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
       'http://127.0.0.1:5000',
-      process.env.FRONTEND_URL,       // Frontend en production (ex: https://gettruck.com)
-      process.env.API_URL,            // API URL
+      'http://127.0.0.1:5001',
+      // Domaine
+      'http://backend-gettruck.totonlionel.com',
+      'http://backend-gettruck.totonlionel.com:5001',
+      'https://backend-gettruck.totonlionel.com',
+      'https://backend-gettruck.totonlionel.com:5001',
+      // Variables d'env
+      process.env.FRONTEND_URL,
+      process.env.API_URL,
     ].filter(Boolean);
+
+    // Sans origin = requête depuis le même serveur (Swagger UI) → accepter
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
 
     // En développement, autoriser tous les origins
     if (process.env.NODE_ENV === 'development') {
       callback(null, true);
+      return;
+    }
+
+    // En production, vérifier la liste blanche
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
     } else {
-      // En production, vérifier la liste blanche
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      // Log pour debug
+      console.warn(`CORS rejected origin: ${origin}`);
+      console.warn(`Allowed origins: ${allowedOrigins.join(', ')}`);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
