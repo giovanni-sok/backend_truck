@@ -51,14 +51,14 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          # Décoder la clé depuis base64 (évite les problèmes de sauts de ligne)
-          echo "${{ secrets.SERVER_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
+          # Écriture propre de la clé privée
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          # Vérifier que la clé est valide
+          # Vérification que la clé est bien valide
           ssh-keygen -l -f ~/.ssh/id_ed25519
 
-          # Désactiver la vérification de host pour éviter le blocage
+          # Config SSH : désactive StrictHostKeyChecking pour éviter le blocage ssh-keyscan
           cat > ~/.ssh/config << SSHEOF
           StrictHostKeyChecking no
           UserKnownHostsFile /dev/null
@@ -69,18 +69,21 @@ jobs:
       - name: Créer le dossier sur le serveur
         run: |
           ssh -i ~/.ssh/id_ed25519 \
+            -p ${{ secrets.SERVER_PORT || 22 }} \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             "sudo mkdir -p /opt/backend-gettruck/docker/scripts && sudo chown -R $USER:$USER /opt/backend-gettruck"
 
       - name: Copier docker-compose.yml
         run: |
           scp -i ~/.ssh/id_ed25519 \
+            -P ${{ secrets.SERVER_PORT || 22 }} \
             docker-compose.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/backend-gettruck/
 
       - name: Copier les scripts
         run: |
           scp -i ~/.ssh/id_ed25519 \
+            -P ${{ secrets.SERVER_PORT || 22 }} \
             docker/scripts/build.sh \
             docker/scripts/deploy.sh \
             docker/scripts/health-check.sh \
@@ -89,6 +92,7 @@ jobs:
       - name: Écrire le .env sur le serveur
         run: |
           ssh -i ~/.ssh/id_ed25519 \
+            -p ${{ secrets.SERVER_PORT || 22 }} \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             "cat > /opt/backend-gettruck/.env" << EOF
           DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
@@ -105,6 +109,7 @@ jobs:
       - name: Lancer le déploiement
         run: |
           ssh -i ~/.ssh/id_ed25519 \
+            -p ${{ secrets.SERVER_PORT || 22 }} \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             "cd /opt/backend-gettruck && \
              chmod +x ./docker/scripts/deploy.sh && \
