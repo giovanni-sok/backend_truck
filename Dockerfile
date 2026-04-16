@@ -19,4 +19,4 @@ COPY src ./src
 EXPOSE 3000
  
 # Lancer l'application
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

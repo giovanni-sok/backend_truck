@@ -36,10 +36,6 @@ docker compose down --remove-orphans || true
 echo "▶️  Démarrage des conteneurs..."
 IMAGE_TAG="${IMAGE_TAG}" docker compose up -d
 
-# ─── Migrations Prisma ────────────────────────────────────
-echo "🗄️  Exécution des migrations Prisma..."
-docker compose exec -T app npx prisma migrate deploy
-
 # ─── Nettoyage des anciennes images ──────────────────────
 echo "🧹 Nettoyage des images non utilisées..."
 docker image prune -f
