@@ -1,6 +1,24 @@
 #!/bin/bash
 set -e
 
+# ─── Chargement du .env ───────────────────────────────────
+ENV_FILE="/opt/backend-gettruck/.env"
+
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+else
+  echo "❌ Fichier .env introuvable : $ENV_FILE"
+  exit 1
+fi
+
+# ─── Validation ──────────────────────────────────────────
+if [ -z "$DOCKERHUB_USERNAME" ]; then
+  echo "❌ DOCKERHUB_USERNAME est vide — vérifier le .env"
+  exit 1
+fi
+
 # ─── Variables ───────────────────────────────────────────
 IMAGE_NAME="${DOCKERHUB_USERNAME}/backend-gettruck"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
