@@ -109,6 +109,8 @@ jobs:
               EMAIL_PASS=${{ secrets.EMAIL_PASS }}
               FRONTEND_URL=${{ secrets.FRONTEND_URL }}
               EOF
+              
+              sed -i 's/\r//g; s/ = /=/g; s/^ //g' /tmp/.env
 
               scp -i ~/.ssh/id_ed25519 \
                 -P ${{ secrets.SERVER_PORT || 22 }} \
