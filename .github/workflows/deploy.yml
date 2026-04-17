@@ -140,11 +140,38 @@ jobs:
           SSHEOF
           chmod 600 ~/.ssh/config
 
+      - name: Préparer et envoyer la config Nginx initiale
+        run: |
+          cat > /tmp/gettruck-nginx.conf << 'EOF'
+          server {
+              listen 80;
+              server_name backend-gettruck.totonlionel.com;
+
+              location / {
+                  proxy_pass http://localhost:5001;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_connect_timeout 60s;
+                  proxy_send_timeout    60s;
+                  proxy_read_timeout    60s;
+              }
+          }
+          EOF
+          scp -i ~/.ssh/id_ed25519 \
+            -P ${{ secrets.SERVER_PORT || 22 }} \
+            /tmp/gettruck-nginx.conf \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/gettruck-nginx.conf
+
       - name: Installer Nginx + Certbot et configurer SSL
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << ENDSSH
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
 
             # Installer si pas déjà présent
             if ! command -v nginx &> /dev/null; then
@@ -171,30 +198,14 @@ jobs:
             # (pour ne pas écraser la version modifiée par Certbot)
             if [ ! -f /etc/nginx/sites-available/gettruck ]; then
               echo "📝 Première installation : création de la config Nginx HTTP"
-              sudo tee /etc/nginx/sites-available/gettruck > /dev/null << 'NGINXEOF'
-            server {
-                listen 80;
-                server_name backend-gettruck.totonlionel.com;
-
-                location / {
-                    proxy_pass http://localhost:5001;
-                    proxy_http_version 1.1;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto \$scheme;
-                    proxy_set_header Upgrade \$http_upgrade;
-                    proxy_set_header Connection "upgrade";
-                    proxy_connect_timeout 60s;
-                    proxy_send_timeout    60s;
-                    proxy_read_timeout    60s;
-                }
-            }
-            NGINXEOF
+              sudo cp /tmp/gettruck-nginx.conf /etc/nginx/sites-available/gettruck
               sudo ln -sf /etc/nginx/sites-available/gettruck /etc/nginx/sites-enabled/
             else
               echo "✅ Config Nginx existante trouvée, conservation de la config SSL"
             fi
+
+            # Nettoyer le fichier temporaire
+            rm -f /tmp/gettruck-nginx.conf
 
             # Vérifier et recharger Nginx
             sudo nginx -t && sudo systemctl reload nginx
@@ -205,7 +216,7 @@ jobs:
               sudo certbot --nginx -d backend-gettruck.totonlionel.com \
                 --non-interactive \
                 --agree-tos \
-                --email ${{ secrets.EMAIL_USER }}
+                --email "$CERTBOT_EMAIL"
             else
               echo "🔄 Renouvellement du certificat si nécessaire..."
               sudo certbot renew --quiet
@@ -217,3 +228,5 @@ jobs:
             echo "✅ Nginx + SSL configurés avec succès"
 
           ENDSSH
+        env:
+          CERTBOT_EMAIL: ${{ secrets.EMAIL_USER }}
