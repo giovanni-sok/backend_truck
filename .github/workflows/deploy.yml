@@ -140,90 +140,56 @@ jobs:
           SSHEOF
           chmod 600 ~/.ssh/config
 
-      - name: Préparer et envoyer la config Nginx initiale
-        run: |
-          cat > /tmp/gettruck-nginx.conf << 'EOF'
-          server {
-              listen 80;
-              server_name backend-gettruck.totonlionel.com;
-
-              location / {
-                  proxy_pass http://localhost:5001;
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  proxy_connect_timeout 60s;
-                  proxy_send_timeout    60s;
-                  proxy_read_timeout    60s;
-              }
-          }
-          EOF
-          scp -i ~/.ssh/id_ed25519 \
-            -P ${{ secrets.SERVER_PORT || 22 }} \
-            /tmp/gettruck-nginx.conf \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/gettruck-nginx.conf
-
       - name: Installer Nginx + Certbot et configurer SSL
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             -p ${{ secrets.SERVER_PORT || 22 }} \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
 
-            # Installer si pas déjà présent
+            # ── Installer Nginx + Certbot si absent ──
             if ! command -v nginx &> /dev/null; then
               sudo apt update -y
               sudo apt install -y nginx certbot python3-certbot-nginx
             fi
-
-            # Installer certbot si absent
             if ! command -v certbot &> /dev/null; then
               sudo apt update -y
               sudo apt install -y certbot python3-certbot-nginx
             fi
 
-            # Ouvrir les ports
+            # ── Ouvrir les ports ──
             sudo ufw allow 22/tcp
             sudo ufw allow 80/tcp
             sudo ufw allow 443/tcp
             sudo ufw --force enable
 
-            # Supprimer la config par défaut de Nginx
-            sudo rm -f /etc/nginx/sites-enabled/default
+            # ── Supprimer les anciennes configs ──
+            # sudo rm -f /etc/nginx/sites-enabled/default
+            sudo rm -f /etc/nginx/sites-available/gettruck
+            sudo rm -f /etc/nginx/sites-enabled/gettruck
 
-            # Ne créer la config initiale QUE si elle n'existe PAS encore
-            # (pour ne pas écraser la version modifiée par Certbot)
-            if [ ! -f /etc/nginx/sites-available/gettruck ]; then
-              echo "📝 Première installation : création de la config Nginx HTTP"
-              sudo cp /tmp/gettruck-nginx.conf /etc/nginx/sites-available/gettruck
-              sudo cp /opt/backend-gettruck/backend-gettruck.totonlionel.com.conf /etc/nginx/sites-available/backend-gettruck.totonlionel.com.conf
-              sudo ln -sf /etc/nginx/sites-available/gettruck /etc/nginx/sites-enabled/
-            else
-              echo "✅ Config Nginx existante trouvée, conservation de la config SSL"
-            fi
-
-            # Nettoyer le fichier temporaire
-            rm -f /tmp/gettruck-nginx.conf
-
-            # Vérifier et recharger Nginx
-            sudo nginx -t && sudo systemctl reload nginx
-
-            # Générer ou renouveler SSL
+            # ── Générer le certificat SSL si absent ──
             if [ ! -d "/etc/letsencrypt/live/backend-gettruck.totonlionel.com" ]; then
-              echo "🔐 Génération du certificat SSL..."
-              sudo certbot --nginx -d backend-gettruck.totonlionel.com \
+              echo "🔐 Génération du certificat SSL (standalone)..."
+              sudo systemctl stop nginx
+              sudo certbot certonly --standalone \
+                -d backend-gettruck.totonlionel.com \
                 --non-interactive \
                 --agree-tos \
                 --email "$CERTBOT_EMAIL"
+              sudo systemctl start nginx
             else
-              echo "🔄 Renouvellement du certificat si nécessaire..."
-              sudo certbot renew --quiet
+              echo "✅ Certificats SSL déjà présents"
+              sudo certbot renew --quiet || true
             fi
 
-            # Recharger Nginx après Certbot pour appliquer le SSL
+            # ── Déployer la config Nginx complète (HTTP + HTTPS) ──
+            echo "📝 Déploiement de la config Nginx avec SSL..."
+            sudo cp /opt/backend-gettruck/backend-gettruck.totonlionel.com.conf \
+              /etc/nginx/sites-available/backend-gettruck.totonlionel.com.conf
+            sudo ln -sf /etc/nginx/sites-available/backend-gettruck.totonlionel.com.conf \
+              /etc/nginx/sites-enabled/backend-gettruck.totonlionel.com.conf
+
+            # ── Vérifier et recharger Nginx ──
             sudo nginx -t && sudo systemctl reload nginx
 
             echo "✅ Nginx + SSL configurés avec succès"
