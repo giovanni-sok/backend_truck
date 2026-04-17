@@ -140,7 +140,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << ENDSSH
 
             # Installer si pas déjà présent
             if ! command -v nginx &> /dev/null; then
