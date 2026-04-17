@@ -19,11 +19,11 @@ async function main() {
 
   const admin = await prisma.user.create({
     data: {
-      email: "admin@gettruck.com",
+      email: "workai2105@gmail.com",
       password: hashedPassword,
-      nom: "Admin",
-      prenom: "Gettruck",
-      telephone: "+33600000000",
+      nom: "Super",
+      prenom: "Admin",
+      telephone: "+2290191793100",
       role: "ADMIN",
       isVerified: true,
       isApproved: true,
