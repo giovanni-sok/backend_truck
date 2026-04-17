@@ -9,14 +9,12 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-
   # ────────────────────────────────────────────────────────
-  # JOB 0 : Build & Push vers DockerHub
+  # JOB 1 : Build & Push vers DockerHub
   # ────────────────────────────────────────────────────────
   build:
     name: 🔨 Build & Push Docker Image
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
@@ -34,108 +32,30 @@ jobs:
         run: |
           chmod +x ./docker/scripts/build.sh
           ./docker/scripts/build.sh
+
   # ────────────────────────────────────────────────────────
-  # JOB 1 : Setup Nginx + SSL (première fois seulement)
-  # ────────────────────────────────────────────────────────
-  setup:
-    name: ⚙️ Setup Nginx + SSL
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Configurer la clé SSH
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          cat > ~/.ssh/config << SSHEOF
-          StrictHostKeyChecking no
-          UserKnownHostsFile /dev/null
-          LogLevel ERROR
-          SSHEOF
-          chmod 600 ~/.ssh/config
-
-      - name: Installer et configurer Nginx + Certbot
-        run: |
-          ssh -i ~/.ssh/id_ed25519 \
-            -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-
-            # Installer Nginx et Certbot si pas déjà installés
-            if ! command -v nginx &> /dev/null; then
-              sudo apt update
-              sudo apt install -y nginx certbot python3-certbot-nginx
-            fi
-
-            # Ouvrir les ports firewall
-            sudo ufw allow 22/tcp
-            sudo ufw allow 80/tcp
-            sudo ufw allow 443/tcp
-            sudo ufw allow 5001/tcp
-            sudo ufw --force enable
-
-            # Créer la config Nginx
-            sudo tee /etc/nginx/sites-available/gettruck > /dev/null << 'NGINXEOF'
-            server {
-                listen 80;
-                server_name ${{ secrets.SERVER_DOMAIN }};
-
-                location / {
-                    proxy_pass http://localhost:5001;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                }
-            }
-            NGINXEOF
-
-            # Activer le site
-            sudo ln -sf /etc/nginx/sites-available/gettruck /etc/nginx/sites-enabled/
-            sudo nginx -t && sudo systemctl reload nginx
-
-            # Générer le certificat SSL si pas encore fait
-            if [ ! -d "/etc/letsencrypt/live/${{ secrets.SERVER_DOMAIN }}" ]; then
-              sudo certbot --nginx -d ${{ secrets.SERVER_DOMAIN }} \
-                --non-interactive \
-                --agree-tos \
-                --email ${{ secrets.EMAIL_USER }}
-            fi
-
-          ENDSSH
-  # ────────────────────────────────────────────────────────
-  # JOB 2 : Déploiement sur le serveur via SSH/SCP natifs
+  # JOB 2 : Déploiement sur le serveur
   # ────────────────────────────────────────────────────────
   deploy:
     name: 🚀 Deploy sur le serveur
     runs-on: ubuntu-latest
     needs: build
-
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
 
       - name: Vérifier la connectivité
         run: |
-          echo "Host: ${{ secrets.SERVER_HOST }}"
-          echo "Port: ${{ secrets.SERVER_PORT }}"
           nc -zv -w 10 ${{ secrets.SERVER_HOST }} ${{ secrets.SERVER_PORT || 22 }} \
           && echo "✅ Port accessible" \
           || echo "❌ Port inaccessible"
 
       - name: Configurer la clé SSH
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          # Écriture propre de la clé privée
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-
-          # Vérification que la clé est bien valide
           ssh-keygen -l -f ~/.ssh/id_ed25519
-
-          # Config SSH : désactive StrictHostKeyChecking pour éviter le blocage ssh-keyscan
           cat > ~/.ssh/config << SSHEOF
           StrictHostKeyChecking no
           UserKnownHostsFile /dev/null
@@ -147,7 +67,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "sudo mkdir -p /opt/backend-gettruck/docker/scripts && sudo chown -R ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /opt/backend-gettruck"
+            "sudo mkdir -p /opt/backend-gettruck/docker/scripts && \
+             sudo chown -R ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /opt/backend-gettruck"
 
       - name: Copier docker-compose.yml
         run: |
@@ -178,14 +99,12 @@ jobs:
           EMAIL_PASS="${{ secrets.EMAIL_PASS }}"
           FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
           EOF
-
           sed -i 's/\r//g' /tmp/.env
-
           scp -i ~/.ssh/id_ed25519 \
             -P ${{ secrets.SERVER_PORT || 22 }} \
             /tmp/.env \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/backend-gettruck/.env
-            
+
       - name: Lancer le déploiement
         run: |
           ssh -i ~/.ssh/id_ed25519 \
@@ -196,3 +115,71 @@ jobs:
              chmod +x ./docker/scripts/health-check.sh && \
              ./docker/scripts/deploy.sh && \
              ./docker/scripts/health-check.sh"
+
+  # ────────────────────────────────────────────────────────
+  # JOB 3 : Setup Nginx + SSL (après déploiement)
+  # ────────────────────────────────────────────────────────
+  ssl-setup:
+    name: 🔒 Setup Nginx + SSL
+    runs-on: ubuntu-latest
+    needs: deploy   # ← attend que l'app tourne
+    steps:
+      - name: Configurer la clé SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat > ~/.ssh/config << SSHEOF
+          StrictHostKeyChecking no
+          UserKnownHostsFile /dev/null
+          LogLevel ERROR
+          SSHEOF
+          chmod 600 ~/.ssh/config
+
+      - name: Installer Nginx + Certbot et configurer SSL
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            -p ${{ secrets.SERVER_PORT || 22 }} \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+
+            # Installer si pas déjà présent
+            if ! command -v nginx &> /dev/null; then
+              sudo apt update -y
+              sudo apt install -y nginx certbot python3-certbot-nginx
+            fi
+
+            # Ouvrir les ports
+            sudo ufw allow 22/tcp
+            sudo ufw allow 80/tcp
+            sudo ufw allow 443/tcp
+            sudo ufw --force enable
+
+            # Créer config Nginx
+            sudo tee /etc/nginx/sites-available/gettruck > /dev/null << 'NGINXEOF'
+            server {
+                listen 80;
+                server_name backend-gettruck.totonlionel.com;
+
+                location / {
+                    proxy_pass http://localhost:5001;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+            }
+            NGINXEOF
+
+            # Activer le site
+            sudo ln -sf /etc/nginx/sites-available/gettruck /etc/nginx/sites-enabled/
+            sudo nginx -t && sudo systemctl reload nginx
+
+            # Générer SSL seulement si pas encore fait
+            if [ ! -d "/etc/letsencrypt/live/backend-gettruck.totonlionel.com" ]; then
+              sudo certbot --nginx -d backend-gettruck.totonlionel.com \
+                --non-interactive \
+                --agree-tos \
+                --email ${{ secrets.EMAIL_USER }}
+            fi
+
+          ENDSSH
