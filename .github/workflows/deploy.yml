@@ -199,6 +199,7 @@ jobs:
             if [ ! -f /etc/nginx/sites-available/gettruck ]; then
               echo "📝 Première installation : création de la config Nginx HTTP"
               sudo cp /tmp/gettruck-nginx.conf /etc/nginx/sites-available/gettruck
+              sudo cp /opt/backend-gettruck/backend-gettruck.totonlionel.com.conf /etc/nginx/sites-available/backend-gettruck.totonlionel.com.conf
               sudo ln -sf /etc/nginx/sites-available/gettruck /etc/nginx/sites-enabled/
             else
               echo "✅ Config Nginx existante trouvée, conservation de la config SSL"
