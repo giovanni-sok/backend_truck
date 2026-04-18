@@ -28,6 +28,8 @@ const corsOptions = {
       'http://backend-gettruck.totonlionel.com:5001',
       'https://backend-gettruck.totonlionel.com',
       'https://backend-gettruck.totonlionel.com:5001',
+      // Frontend Netlify
+      'https://gettruck.netlify.app',
       // Variables d'env
       process.env.FRONTEND_URL,
       process.env.API_URL,

@@ -77,7 +77,7 @@ jobs:
             docker-compose.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/backend-gettruck/
 
-      - name: Copier les scripts
+      - name: Copier les scripts et la config Nginx
         run: |
           scp -i ~/.ssh/id_ed25519 \
             -P ${{ secrets.SERVER_PORT || 22 }} \
@@ -85,6 +85,10 @@ jobs:
             docker/scripts/deploy.sh \
             docker/scripts/health-check.sh \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/backend-gettruck/docker/scripts/
+          scp -i ~/.ssh/id_ed25519 \
+            -P ${{ secrets.SERVER_PORT || 22 }} \
+            nginx/backend-gettruck.totonlionel.com.conf \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/backend-gettruck/
 
       - name: Écrire le .env sur le serveur
         run: |
@@ -142,44 +146,54 @@ jobs:
             -p ${{ secrets.SERVER_PORT || 22 }} \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
 
-            # Installer si pas déjà présent
+            # ── Installer Nginx + Certbot si absent ──
             if ! command -v nginx &> /dev/null; then
               sudo apt update -y
               sudo apt install -y nginx certbot python3-certbot-nginx
             fi
+            if ! command -v certbot &> /dev/null; then
+              sudo apt update -y
+              sudo apt install -y certbot python3-certbot-nginx
+            fi
 
-            # Ouvrir les ports
+            # ── Ouvrir les ports ──
             sudo ufw allow 22/tcp
             sudo ufw allow 80/tcp
             sudo ufw allow 443/tcp
             sudo ufw --force enable
 
-            # Créer config Nginx
-            sudo tee /etc/nginx/sites-available/gettruck > /dev/null << 'NGINXEOF'
-            server {
-                listen 80;
-                server_name backend-gettruck.totonlionel.com;
+            # ── Supprimer les anciennes configs ──
+            # sudo rm -f /etc/nginx/sites-enabled/default
+            sudo rm -f /etc/nginx/sites-available/gettruck
+            sudo rm -f /etc/nginx/sites-enabled/gettruck
 
-                location / {
-                    proxy_pass http://localhost:5001;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                }
-            }
-            NGINXEOF
-
-            # Activer le site
-            sudo ln -sf /etc/nginx/sites-available/gettruck /etc/nginx/sites-enabled/
-            sudo nginx -t && sudo systemctl reload nginx
-
-            # Générer SSL seulement si pas encore fait
+            # ── Générer le certificat SSL si absent ──
             if [ ! -d "/etc/letsencrypt/live/backend-gettruck.totonlionel.com" ]; then
-              sudo certbot --nginx -d backend-gettruck.totonlionel.com \
+              echo "🔐 Génération du certificat SSL (standalone)..."
+              sudo systemctl stop nginx
+              sudo certbot certonly --standalone \
+                -d backend-gettruck.totonlionel.com \
                 --non-interactive \
                 --agree-tos \
-                --email ${{ secrets.EMAIL_USER }}
+                --email "$CERTBOT_EMAIL"
+              sudo systemctl start nginx
+            else
+              echo "✅ Certificats SSL déjà présents"
+              sudo certbot renew --quiet || true
             fi
 
+            # ── Déployer la config Nginx complète (HTTP + HTTPS) ──
+            echo "📝 Déploiement de la config Nginx avec SSL..."
+            sudo cp /opt/backend-gettruck/backend-gettruck.totonlionel.com.conf \
+              /etc/nginx/sites-available/backend-gettruck.totonlionel.com.conf
+            sudo ln -sf /etc/nginx/sites-available/backend-gettruck.totonlionel.com.conf \
+              /etc/nginx/sites-enabled/backend-gettruck.totonlionel.com.conf
+
+            # ── Vérifier et recharger Nginx ──
+            sudo nginx -t && sudo systemctl reload nginx
+
+            echo "✅ Nginx + SSL configurés avec succès"
+
           ENDSSH
+        env:
+          CERTBOT_EMAIL: ${{ secrets.EMAIL_USER }}
