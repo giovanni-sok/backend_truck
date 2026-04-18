@@ -49,6 +49,7 @@ const hashedPassword = await bcrypt.hash(password, 10);
 return user;
 };
 
+// LOGIN - For mobile app (Clients, Drivers, and Admin)
 exports.login = async ({ email, password }) => {
   const user = await prisma.user.findUnique({
     where: { email },
@@ -56,15 +57,18 @@ exports.login = async ({ email, password }) => {
 
   if (!user) throw new Error("Utilisateur introuvable");
   if (!user.isVerified) {
-  throw new Error("Veuillez vérifier votre compte");
+    throw new Error("Veuillez vérifier votre compte");
   }
+
+  // Restrictions spécifiques pour les chauffeurs
   if (user.role === "CHAUFFEUR" && !user.isApproved) {
     throw new Error("Compte en attente de validation par l'administrateur");
   }
-  const isMatch = await bcrypt.compare(password, user.password);
 
+  const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw new Error("Mot de passe incorrect");
 
+  // Note: l'ADMIN a accès au mobile par défaut ici
   return user;
 };
 
@@ -82,7 +86,7 @@ exports.loginAdmin = async ({ email, password }) => {
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw new Error("Mot de passe incorrect");
 
-  // Seul le rôle ADMIN peut se connecter sur l'interface web
+  // Seul le rôle ADMIN peut se connecter sur l'interface web dashboard
   if (user.role !== "ADMIN") {
     throw new Error("Accès refusé : seuls les administrateurs peuvent se connecter sur cette interface");
   }

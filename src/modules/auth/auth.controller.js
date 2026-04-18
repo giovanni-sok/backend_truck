@@ -27,7 +27,10 @@ exports.login = async (req, res) => {
       token,
     });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    // Renvoyer 403 si c'est un problème d'approbation ou de permission
+    const isForbidden = err.message.includes("attente de validation") || err.message.includes("Accès refusé");
+    const status = isForbidden ? 403 : 400;
+    res.status(status).json({ message: err.message });
   }
 };
 
@@ -43,8 +46,9 @@ exports.loginAdmin = async (req, res) => {
       token,
     });
   } catch (err) {
-    // Renvoyer 403 si c'est un refus d'accès
-    const status = err.message.includes("Accès refusé") ? 403 : 400;
+    // Renvoyer 403 si c'est un refus d'accès rôle
+    const isForbidden = err.message.includes("Accès refusé") || err.message.includes("seuls les administrateurs");
+    const status = isForbidden ? 403 : 400;
     res.status(status).json({ message: err.message });
   }
 };
