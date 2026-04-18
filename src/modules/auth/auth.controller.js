@@ -30,6 +30,24 @@ exports.login = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+// LOGIN ADMIN — réservé à l'interface web admin
+exports.loginAdmin = async (req, res) => {
+  try {
+    const user = await service.loginAdmin(req.body);
+    const token = generateToken(user);
+
+    res.json({
+      message: "Connexion réussie",
+      user,
+      token,
+    });
+  } catch (err) {
+    // Renvoyer 403 si c'est un refus d'accès
+    const status = err.message.includes("Accès refusé") ? 403 : 400;
+    res.status(status).json({ message: err.message });
+  }
+};
 // DEMANDE RESET
 exports.forgotPassword = async (req, res) => {
   try {

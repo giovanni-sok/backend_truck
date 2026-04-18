@@ -4,7 +4,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 function generateSwaggerSpec(req) {
   // Déterminer l'URL de base depuis la requête
   const protocol = req.get('X-Forwarded-Proto') || req.protocol || 'http';
-  const host = req.get('X-Forwarded-Host') || req.get('host') || 'localhost:5001';
+  const host = req.get('X-Forwarded-Host') || req.get('host') || 'localhost:6500';
   const baseUrl = `${protocol}://${host}`;
 
   const options = {

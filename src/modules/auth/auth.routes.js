@@ -61,6 +61,31 @@ router.post("/register", controller.register);
 router.post("/login", controller.login);
 /**
  * @swagger
+ * /api/auth/login-admin:
+ *   post:
+ *     summary: Connexion admin (interface web uniquement)
+ *     description: Seuls les utilisateurs avec le rôle ADMIN peuvent se connecter via cette route. Les autres rôles recevront une erreur 403.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Connexion réussie
+ *       403:
+ *         description: Accès refusé - rôle non autorisé
+ */
+router.post("/login-admin", controller.loginAdmin);
+/**
+ * @swagger
  * /api/auth/forgot-password:
  *   post:
  *     summary: Demander un réinitialisation de mot de passe

@@ -20,6 +20,6 @@ RUN npx prisma generate
 COPY src ./src
 
 # Exposer le port de l'app
-EXPOSE 5001
+EXPOSE 6500
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

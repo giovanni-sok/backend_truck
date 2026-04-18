@@ -16,18 +16,18 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:5000',
-      'http://localhost:5001',
+      'http://localhost:6500',
       'http://localhost:5173',
       'http://127.0.0.1:3000',
       'http://127.0.0.1:3001',
       'http://127.0.0.1:5000',
-      'http://127.0.0.1:5001',
+      'http://127.0.0.1:6500',
       'http://127.0.0.1:5173',
       // Domaine
       'http://backend-gettruck.totonlionel.com',
-      'http://backend-gettruck.totonlionel.com:5001',
+      'http://backend-gettruck.totonlionel.com:6500',
       'https://backend-gettruck.totonlionel.com',
-      'https://backend-gettruck.totonlionel.com:5001',
+      'https://backend-gettruck.totonlionel.com:6500',
       // Frontend Netlify
       'https://gettruck.netlify.app',
       // Variables d'env

@@ -68,6 +68,28 @@ exports.login = async ({ email, password }) => {
   return user;
 };
 
+// LOGIN ADMIN — réservé à l'interface web admin
+exports.loginAdmin = async ({ email, password }) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) throw new Error("Utilisateur introuvable");
+  if (!user.isVerified) {
+    throw new Error("Veuillez vérifier votre compte");
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) throw new Error("Mot de passe incorrect");
+
+  // Seul le rôle ADMIN peut se connecter sur l'interface web
+  if (user.role !== "ADMIN") {
+    throw new Error("Accès refusé : seuls les administrateurs peuvent se connecter sur cette interface");
+  }
+
+  return user;
+};
+
 
 // 1. DEMANDE RESET
 exports.forgotPassword = async (email) => {
