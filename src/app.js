@@ -6,6 +6,8 @@ const generateSwaggerSpec = require("./config/swagger");
 
 const authRoutes = require("./modules/auth/auth.routes");
 const userRoutes = require("./modules/user/user.routes");
+const settingsRoutes = require("./modules/settings/settings.routes");
+const missionRoutes = require("./modules/mission/mission.routes");
 const app = express();
 
 const corsOptions = {
@@ -67,6 +69,8 @@ app.use(express.json());
 // Routes API pour authentification et gestion des utilisateurs
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/missions", missionRoutes);
 // Swagger avec URL dynamique
 app.use("/api-docs", swaggerUi.serve, (req, res, next) => {
   const swaggerSpec = generateSwaggerSpec(req);

@@ -1,8 +1,14 @@
+const http = require('http');
 const app = require("./app");
 const prisma = require("./config/prisma");
 const bcrypt = require("bcrypt");
+const { initSocket } = require("./config/socket");
 
 const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
+
+// Initialisation de Socket.io
+initSocket(server);
 
 // Fonction pour initialiser l'admin par défaut
 async function initializeAdmin() {
@@ -35,9 +41,9 @@ async function initializeAdmin() {
 // Initialiser l'admin et démarrer le serveur
 initializeAdmin().then(() => {
   const HOST = process.env.HOST || "0.0.0.0";
-  app.listen(PORT, HOST, () => {
+  server.listen(PORT, HOST, () => {
     const API_URL = process.env.API_URL || `http://localhost:${PORT}`;
     console.log(`🚀 Server lancé sur ${HOST}:${PORT}`);
-    console.log(`📡 Accessible via ${API_URL}`);
+    console.log(`📡 Accessible via ${API_URL} (Real-time enabled)`);
   });
 });

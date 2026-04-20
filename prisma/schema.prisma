@@ -7,10 +7,20 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 enum Role {
   ADMIN
   CLIENT
   CHAUFFEUR
+}
+
+enum MissionStatus {
+  PENDING
+  ACCEPTED
+  ARRIVED
+  STARTED
+  COMPLETED
+  CANCELLED
 }
 
 model User {
@@ -24,11 +34,63 @@ model User {
   isActive      Boolean  @default(true)
   isVerified    Boolean  @default(false)
   isApproved    Boolean  @default(false)
+  
+  // Localisation & Disponibilité
+  currentLat    Float?
+  currentLng    Float?
+  isAvailable   Boolean  @default(true)
+
   verificationCode     String?
   verificationExpires  DateTime?
   lastOtpSentAt DateTime?
   resetToken    String?
   resetExpires  DateTime?
+  
+  // Relations
+  missionsAsClient    Mission[] @relation("ClientMissions")
+  missionsAsDriver    Mission[] @relation("DriverMissions")
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Settings {
+  id             Int      @id @default(1)
+  basePrice      Float    @default(2000)
+  kmPrice        Float    @default(500)
+  commissionRate Float    @default(15) // Pourcent
+  currency       String   @default("CFA")
+  zones          String[] @default(["Cotonou", "Porto-Novo", "Abomey-Calavi"])
+  updatedAt      DateTime @updatedAt
+}
+
+model Mission {
+  id              Int           @id @default(autoincrement())
+  
+  // Acteurs
+  clientId        Int
+  client          User          @relation("ClientMissions", fields: [clientId], references: [id])
+  chauffeurId     Int?
+  chauffeur       User?         @relation("DriverMissions", fields: [chauffeurId], references: [id])
+
+  // Itinéraire
+  pickupAddr      String
+  deliveryAddr    String
+  pickupLat       Float?
+  pickupLng       Float?
+  deliveryLat     Float?
+  deliveryLng     Float?
+
+  // Détails
+  status          MissionStatus @default(PENDING)
+  distance        Float?        // en KM
+  estimatedPrice  Float?
+  finalPrice      Float?
+
+  // Timestamps
+  acceptedAt      DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
